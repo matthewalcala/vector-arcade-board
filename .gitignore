@@ -1,0 +1,8 @@
+roms/
+re/ghidra/
+re/images/
+.claude/
+*.zip
+*.bin
+*.wav
+.DS_Store
