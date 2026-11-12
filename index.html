@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Vector Arcade Board</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="app">
+  <div id="pad" class="zone" aria-label="Aim pad"><span>AIM</span></div>
+  <div id="screen"><canvas id="view"></canvas></div>
+  <div id="fire" class="zone" aria-label="Fire"><span>FIRE</span></div>
+</main>
+
+<div id="sound">TAP FOR SOUND</div>
+
+<div id="setup">
+  <div class="card">
+    <h1>Vector Arcade Board</h1>
+    <p id="msg">Choose your ROM zip to start. It stays on this device.</p>
+    <label class="btn">Choose ROM zip<input id="file" type="file" accept=".zip,application/zip" hidden></label>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
