@@ -45,7 +45,11 @@ async function kvSet(key, value) {
 
 async function start(buffer, remember) {
   const roms = await loadRomSet(buffer);
-  if (remember) kvSet('rom', buffer);
+  if (remember) {
+    kvSet('rom', buffer);
+    // ask the browser not to clear this site's storage when space runs low
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  }
   const nv = await kvGet('nvram');
   board = new Board(roms, nv instanceof Uint8Array && nv.length === 256 ? nv : null);
   board.onNvStore = (data) => kvSet('nvram', new Uint8Array(data));
@@ -234,7 +238,7 @@ for (const ev of ['pointerup', 'pointercancel']) {
 
 // aim pad: relative, like a trackpad. The crosshair stays where you leave it.
 const pad = $('pad');
-const PAD_GAIN = 1.6;
+const PAD_TRAVEL = 110; // px of thumb travel for the full range
 let padPointer = null, padLast = null;
 pad.addEventListener('pointerdown', (e) => {
   e.preventDefault();
@@ -245,10 +249,8 @@ pad.addEventListener('pointerdown', (e) => {
 });
 pad.addEventListener('pointermove', (e) => {
   if (e.pointerId !== padPointer) return;
-  const r = pad.getBoundingClientRect();
-  const size = Math.min(r.width, r.height) || 1;
-  stick.x = clamp01(stick.x + (e.clientX - padLast.x) / size * PAD_GAIN);
-  stick.y = clamp01(stick.y + (e.clientY - padLast.y) / size * PAD_GAIN);
+  stick.x = clamp01(stick.x + (e.clientX - padLast.x) / PAD_TRAVEL);
+  stick.y = clamp01(stick.y + (e.clientY - padLast.y) / PAD_TRAVEL);
   padLast = { x: e.clientX, y: e.clientY };
   touched();
 });
@@ -281,6 +283,18 @@ for (const ev of ['pointerup', 'pointercancel']) {
     if (e.pointerType === 'mouse') setFire(false);
   });
 }
+
+// landscape picture shape: stretched to fill, or the cabinet's 4:3
+const shape = $('shape');
+function setFit(fit) {
+  $('app').classList.toggle('fit', fit);
+  shape.textContent = fit ? 'WIDE' : '4:3';
+  try { localStorage.setItem('fit', fit ? '1' : ''); } catch { /* not remembered */ }
+}
+shape.addEventListener('click', () => setFit(!$('app').classList.contains('fit')));
+let savedFit = false;
+try { savedFit = !!localStorage.getItem('fit'); } catch { /* default */ }
+setFit(savedFit);
 
 // keyboard, for desktop testing
 const keys = new Set();
