@@ -24,17 +24,17 @@ html, body {
 #shape { display: none; }
 
 @media (orientation: landscape) {
-  /* picture fills the screen; the controls float over its left and right thirds */
+  /* picture fills the screen; the left half aims and the right half fires, with nothing drawn */
   #app { display: block; padding: 0; }
   #screen {
     position: absolute; top: 0; bottom: 0; left: env(safe-area-inset-left); right: env(safe-area-inset-right);
     height: auto; aspect-ratio: auto; max-width: none;
   }
   #app.fit #screen { left: 50%; right: auto; height: 100%; aspect-ratio: 4 / 3; transform: translateX(-50%); }
-  .zone { position: absolute; top: 0; bottom: 0; width: 30%; z-index: 1; padding: 0 0 28px; align-items: flex-end; }
-  #pad { left: 0; padding-left: calc(env(safe-area-inset-left) + 22px); }
-  #fire { right: 0; justify-content: flex-end; padding-right: calc(env(safe-area-inset-right) + 22px); }
-  .zone span { flex: none; width: 96px; height: 96px; border-radius: 50%; padding: 0; align-items: center; font-size: 10px; }
+  .zone { position: absolute; top: 0; bottom: 0; width: 50%; z-index: 1; padding: 0; }
+  #pad { left: 0; }
+  #fire { right: 0; }
+  .zone span { display: none; }
   #shape {
     display: block; position: fixed; z-index: 2; top: 8px; left: calc(env(safe-area-inset-left) + 14px);
     padding: 6px 8px; border: 0; background: none; color: rgba(160, 200, 230, 0.45);
@@ -59,4 +59,9 @@ html, body {
 #sound {
   position: fixed; z-index: 2; top: calc(env(safe-area-inset-top) + 36px); left: calc(env(safe-area-inset-left) + 18px);
   color: #fc6; font-size: 11px; letter-spacing: 2px; pointer-events: none;
+}
+
+#touch {
+  position: fixed; z-index: 2; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%;
+  border: 2px solid #6cf; opacity: 0; pointer-events: none;
 }

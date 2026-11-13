@@ -238,6 +238,7 @@ for (const ev of ['pointerup', 'pointercancel']) {
 
 // aim pad: relative, like a trackpad. The crosshair stays where you leave it.
 const pad = $('pad');
+const touchRing = $('touch');
 const PAD_TRAVEL = 110; // px of thumb travel for the full range
 let padPointer = null, padLast = null;
 pad.addEventListener('pointerdown', (e) => {
@@ -246,6 +247,13 @@ pad.addEventListener('pointerdown', (e) => {
   padPointer = e.pointerId;
   padLast = { x: e.clientX, y: e.clientY };
   pad.classList.add('on');
+  // brief ring where the thumb landed
+  touchRing.style.left = e.clientX + 'px';
+  touchRing.style.top = e.clientY + 'px';
+  touchRing.animate(
+    [{ opacity: 0.7, transform: 'scale(0.6)' }, { opacity: 0, transform: 'scale(1.25)' }],
+    { duration: 450, easing: 'ease-out' },
+  );
 });
 pad.addEventListener('pointermove', (e) => {
   if (e.pointerId !== padPointer) return;
