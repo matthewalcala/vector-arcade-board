@@ -45,7 +45,11 @@ async function kvSet(key, value) {
 
 async function start(buffer, remember) {
   const roms = await loadRomSet(buffer);
-  if (remember) kvSet('rom', buffer);
+  if (remember) {
+    kvSet('rom', buffer);
+    // ask the browser not to clear this site's storage when space runs low
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  }
   const nv = await kvGet('nvram');
   board = new Board(roms, nv instanceof Uint8Array && nv.length === 256 ? nv : null);
   board.onNvStore = (data) => kvSet('nvram', new Uint8Array(data));
