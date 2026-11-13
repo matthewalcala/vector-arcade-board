@@ -1,5 +1,5 @@
 // Offline support: network first so updates arrive, cached copy when there is no network.
-const CACHE = 'board-v1';
+const CACHE = 'board-v2';
 const FILES = [
   './', 'index.html', 'style.css', 'manifest.json', 'icon-180.png', 'icon-512.png',
   'js/app.js', 'js/avg.js', 'js/board.js', 'js/cpu6809.js', 'js/romset.js', 'js/sound.js', 'js/tms5220.js',
