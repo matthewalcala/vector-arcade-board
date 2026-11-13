@@ -1,5 +1,5 @@
 {
   "type": "module",
   "private": true,
-  "scripts": { "deploy": "git subtree push --prefix web origin gh-pages" }
+  "scripts": { "deploy": "git push -f origin $(git subtree split --prefix web HEAD):gh-pages" }
 }
