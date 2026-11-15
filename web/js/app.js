@@ -201,6 +201,7 @@ function tick(now) {
       board.stickY = Math.round((1 - clamp01((stick.y - 0.111) / 1.07)) * 255);
     }
     board.run(Math.round(dt * CPU_HZ));
+    easy.hidden = !board.selecting;
     if (board.snd) { const samples = board.snd.drain(); if (audioCtx) pushAudio(samples); }
   }
   draw();
@@ -305,22 +306,18 @@ function setFit(fit) {
   showShape();
   try { localStorage.setItem('fit', fit ? '1' : ''); } catch { /* not remembered */ }
 }
-// a long press on the label switches the shield cheat; it is off again on the next launch
-const CHEAT_PRESS_MS = 800;
-let cheatTimer = null, longPressed = false;
-shape.addEventListener('pointerdown', () => {
-  longPressed = false;
-  cheatTimer = setTimeout(() => {
-    longPressed = true;
-    cheat = !cheat;
-    if (board) board.cheat = cheat;
-    showShape();
-  }, CHEAT_PRESS_MS);
+shape.addEventListener('click', () => setFit(!$('app').classList.contains('fit')));
+
+// shield cheat: offered as an extra choice on the wave-select screen, off again on the next launch
+const easy = $('easy');
+easy.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  touched();
+  cheat = !cheat;
+  if (board) board.cheat = cheat;
+  easy.classList.toggle('on', cheat);
+  showShape();
 });
-for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
-  shape.addEventListener(ev, () => clearTimeout(cheatTimer));
-}
-shape.addEventListener('click', () => { if (!longPressed) setFit(!$('app').classList.contains('fit')); });
 let savedFit = false;
 try { savedFit = !!localStorage.getItem('fit'); } catch { /* default */ }
 setFit(savedFit);

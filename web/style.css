@@ -66,3 +66,16 @@ html, body {
   position: fixed; z-index: 2; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%;
   border: 2px solid #6cf; opacity: 0; pointer-events: none;
 }
+
+/* extra choice on the wave-select screen, in the gap above the middle option */
+#easy {
+  position: fixed; z-index: 3; left: 50%; top: 47%; transform: translate(-50%, -50%);
+  padding: 10px 16px; border: 1px solid #fc6; border-radius: 10px; background: rgba(0, 0, 0, 0.55);
+  color: #fc6; font: inherit; font-size: 15px; letter-spacing: 3px; touch-action: none;
+}
+#easy[hidden] { display: none; }
+#easy small { display: block; margin-top: 3px; font-size: 9px; letter-spacing: 2px; opacity: 0.75; }
+#easy.on { background: #fc6; color: #000; }
+@media (orientation: portrait) {
+  #easy { top: calc(env(safe-area-inset-top) + 35vw); }
+}

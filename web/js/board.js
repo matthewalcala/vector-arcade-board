@@ -10,6 +10,7 @@ const SLICE = 64; // CPU cycles the two processors may drift apart
 const M_LAC = 0x01, M_READ_ACC = 0x02, M_HALT = 0x04, M_INC_BIC = 0x08, M_CLEAR_ACC = 0x10, M_LDC = 0x20, M_LDB = 0x40, M_LDA = 0x80;
 
 const SHIELDS = 0x4860; // game RAM: shields remaining
+const GAME_STATE = 0x4841, STATE_SELECT = 14; // game RAM: 14 while the starting wave is being chosen
 
 export class Board {
   // roms: { main0, main1 (bank halves), rom8000, romA000, romC000, romE000, vector, avgProm, math[4] }
@@ -202,6 +203,8 @@ export class Board {
     }
     this.mathDoneAt = this.clock + Math.ceil(ticks / 8);
   }
+
+  get selecting() { return this.mem[GAME_STATE] === STATE_SELECT; }
 
   run(cycles) {
     const end = this.clock + cycles;
