@@ -60,7 +60,12 @@ async function start(buffer, remember) {
   window.__board = board;
 }
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+if ('serviceWorker' in navigator) {
+  // when an updated worker takes over an already-installed app, reload once to run the new files
+  const hadWorker = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadWorker) location.reload(); });
+  navigator.serviceWorker.register('sw.js');
+}
 
 async function boot() {
   const saved = await kvGet('rom');
