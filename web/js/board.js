@@ -1,6 +1,7 @@
 import { CPU6809 } from './cpu6809.js';
 import { AVG } from './avg.js';
 import { SoundBoard } from './sound.js';
+import { Slapstic } from './slapstic.js';
 
 export const CPU_HZ = 12096000 / 8;
 const IRQ_PERIOD = 6144; // CPU cycles: master / 4096 / 12
@@ -9,20 +10,25 @@ const SLICE = 64; // CPU cycles the two processors may drift apart
 // math box microcode strobes
 const M_LAC = 0x01, M_READ_ACC = 0x02, M_HALT = 0x04, M_INC_BIC = 0x08, M_CLEAR_ACC = 0x10, M_LDC = 0x20, M_LDB = 0x40, M_LDA = 0x80;
 
-const SHIELDS = 0x4860; // game RAM: shields remaining
-const GAME_STATE = 0x4841, STATE_SELECT = 14; // game RAM: 14 while the starting wave is being chosen
+// Per-game settings and the few game RAM locations the front end looks at:
+// shields remaining, and the state byte with its value on the wave-select screen.
+const GAMES = {
+  starwars: { dsw0: 0x94, shields: 0x4860, state: 0x4841, select: 14 }, // 6 shields, moderate, 1 bonus shield
+  esb: { dsw0: 0xff, shields: 0x4860, state: 0x4848, select: 14 }, // 4 shields, moderate
+};
 
 export class Board {
-  // roms: { main0, main1 (bank halves), rom8000, romA000, romC000, romE000, vector, avgProm, math[4] }
+  // roms: the layout loadRomSet returns
   constructor(roms, nvram) {
+    this.game = GAMES[roms.game];
     this.mem = new Uint8Array(0x10000);
-    this.bankRom = [roms.bank0, roms.bank1];
+    this.bank6000 = roms.bank6000;
+    this.upper = roms.upper;
     this.mem.set(roms.vector, 0x3000);
-    this.mem.set(roms.bank0, 0x6000);
-    this.mem.set(roms.rom8000, 0x8000);
-    this.mem.set(roms.romA000, 0xa000);
-    this.mem.set(roms.romC000, 0xc000);
-    this.mem.set(roms.romE000, 0xe000);
+    this.mem.set(roms.bank6000[0], 0x6000);
+    this.mem.set(roms.upper[0], 0xa000);
+    if (roms.slapstic) this.slap = new Slapstic((page) => this.mem.set(roms.slapstic[page], 0x8000));
+    else this.mem.set(roms.rom8000, 0x8000);
 
     this.micro = new Uint16Array(1024);
     for (let i = 0; i < 1024; i++) {
@@ -55,13 +61,14 @@ export class Board {
     this.stickY = 0x80;
     this.cheat = false;
     this.shieldsSeen = 0;
-    this.dsw0 = 0x94; // 6 shields, moderate, 1 bonus shield
+    this.dsw0 = this.game.dsw0;
     this.dsw1 = 0x00; // free play
 
     this.cpu.reset();
   }
 
   read(a) {
+    if (this.slap) this.slap.test(a);
     if (a < 0x4300 || a >= 0x4800) return this.mem[a];
     if (a < 0x4400) {
       switch (a & 0xe0) {
@@ -98,6 +105,7 @@ export class Board {
   }
 
   write(a, v) {
+    if (this.slap) this.slap.test(a);
     if (a < 0x3000 || (a >= 0x4800 && a < 0x6000)) { this.mem[a] = v; return; }
     if (a < 0x4400 || a >= 0x4800) return;
     if (a < 0x4500) { if (this.snd && a === 0x4400) this.snd.mainWrite(v); return; }
@@ -132,7 +140,10 @@ export class Board {
   setLatch(bit, v) {
     if (this.latch[bit] === v) return;
     this.latch[bit] = v;
-    if (bit === 4) this.mem.set(this.bankRom[v], 0x6000);
+    if (bit === 4) {
+      this.mem.set(this.bank6000[v], 0x6000);
+      if (this.upper[1]) this.mem.set(this.upper[v], 0xa000);
+    }
     if (bit === 7 && !v) this.nvRam.set(this.nvStore);
   }
 
@@ -204,7 +215,7 @@ export class Board {
     this.mathDoneAt = this.clock + Math.ceil(ticks / 8);
   }
 
-  get selecting() { return this.mem[GAME_STATE] === STATE_SELECT; }
+  get selecting() { return this.mem[this.game.state] === this.game.select; }
 
   run(cycles) {
     const end = this.clock + cycles;
@@ -221,8 +232,9 @@ export class Board {
       if (this.snd) this.snd.runTo(this.clock);
     }
     // cheat: put back a shield the moment the game takes one away
-    const shields = this.mem[SHIELDS];
-    if (this.cheat && shields === this.shieldsSeen - 1) this.mem[SHIELDS] = this.shieldsSeen;
+    const at = this.game.shields;
+    const shields = this.mem[at];
+    if (this.cheat && shields === this.shieldsSeen - 1) this.mem[at] = this.shieldsSeen;
     else this.shieldsSeen = shields;
   }
 }

@@ -1,4 +1,4 @@
-// Static server for web/. If ROM_ZIP is set, also serves that file at /dev-rom.zip
+// Static server for web/. If ROM_ZIP (and ROM_ZIP_2) are set, also serves those files at /dev-rom.zip (and /dev-rom-2.zip)
 // so the page can boot without the file picker during development.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -14,6 +14,7 @@ createServer(async (req, res) => {
   if (path === '/') path = '/index.html';
   let file = join(root, normalize(path));
   if (path === '/dev-rom.zip') file = process.env.ROM_ZIP || '';
+  else if (path === '/dev-rom-2.zip') file = process.env.ROM_ZIP_2 || '';
   else if (!file.startsWith(root)) file = '';
   try {
     const body = await readFile(file);

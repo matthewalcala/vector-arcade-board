@@ -179,6 +179,10 @@ export class CPU6809 {
     let reg = sel === 0 ? this.x : sel === 1 ? this.y : sel === 2 ? this.u : this.s;
     let ea;
     if (!(pb & 0x80)) {
+      // The real chip spends two cycles here with the next opcode address and then 0xffff
+      // on the bus. Nothing uses the data, but bank-switch hardware watching the bus does.
+      this.bus.read(this.pc);
+      this.bus.read(0xffff);
       this.cyc += 1;
       return (reg + ((pb & 0x10) ? (pb & 0x1f) - 0x20 : (pb & 0x1f))) & 0xffff;
     }
