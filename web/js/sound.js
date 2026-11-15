@@ -177,8 +177,7 @@ class Riot {
 export class SoundBoard {
   constructor(roms) {
     this.mem = new Uint8Array(0x10000).fill(0xff);
-    this.mem.set(roms[0], 0x4000); this.mem.set(roms[0], 0xc000);
-    this.mem.set(roms[1], 0x6000); this.mem.set(roms[1], 0xe000);
+    for (const [addr, data] of roms) this.mem.set(data, addr);
     this.mem.fill(0, 0x2000, 0x2800);
     this.riot = new Riot();
     this.pokey = [new Pokey(), new Pokey(), new Pokey(), new Pokey()];

@@ -44,21 +44,48 @@ async function kvSet(key, value) {
 
 // ---- boot ----------------------------------------------------------------
 
+const TITLES = { starwars: 'Star Wars', esb: 'The Empire Strikes Back' };
+// the first game keeps its original storage keys so an existing install carries over
+const romKey = (game) => (game === 'starwars' ? 'rom' : 'rom:' + game);
+const nvKey = (game) => (game === 'starwars' ? 'nvram' : 'nvram:' + game);
+const library = {}; // game -> ROM zip buffer, for every game loaded on this device
+
 async function start(buffer, remember) {
   const roms = await loadRomSet(buffer);
+  const game = roms.game;
+  library[game] = buffer;
   if (remember) {
-    kvSet('rom', buffer);
+    kvSet(romKey(game), buffer);
     // ask the browser not to clear this site's storage when space runs low
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   }
-  const nv = await kvGet('nvram');
+  try { localStorage.setItem('game', game); } catch { /* not remembered */ }
+  const nv = await kvGet(nvKey(game));
   board = new Board(roms, nv instanceof Uint8Array && nv.length === 256 ? nv : null);
-  board.onNvStore = (data) => kvSet('nvram', new Uint8Array(data));
+  board.onNvStore = (data) => kvSet(nvKey(game), new Uint8Array(data));
   if (audioCtx && board.snd) board.snd.setSampleRate(audioCtx.sampleRate, CPU_HZ);
+  cheat = false;
+  easy.classList.remove('on');
+  showShape();
   setup.hidden = true;
-  board.cheat = cheat;
   window.__board = board;
 }
+
+function showGames() {
+  const list = $('games');
+  list.textContent = '';
+  for (const game of Object.keys(library)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn';
+    b.textContent = TITLES[game];
+    b.addEventListener('click', () => start(library[game], false).catch((err) => { msg.textContent = err.message; }));
+    list.append(b);
+  }
+  msg.textContent = list.children.length ? 'Pick a game, or add another ROM zip.' : 'Choose your ROM zip to start. It stays on this device.';
+  setup.hidden = false;
+}
+$('menu').addEventListener('click', showGames);
 
 if ('serviceWorker' in navigator) {
   // when an updated worker takes over an already-installed app, reload once to run the new files
@@ -68,18 +95,31 @@ if ('serviceWorker' in navigator) {
 }
 
 async function boot() {
-  const saved = await kvGet('rom');
-  if (saved) {
-    try { await start(saved, false); return; } catch { /* fall through to picker */ }
+  for (const game of Object.keys(TITLES)) {
+    const saved = await kvGet(romKey(game));
+    if (saved) library[game] = saved;
   }
-  try {
-    const res = await fetch('dev-rom.zip');
-    if (res.ok) { await start(await res.arrayBuffer(), false); return; }
-  } catch { /* no dev rom */ }
+  if (!Object.keys(library).length) {
+    // development only: the dev server can hand out ROM zips so no picking is needed
+    for (const name of ['dev-rom.zip', 'dev-rom-2.zip']) {
+      try {
+        const res = await fetch(name);
+        if (!res.ok) continue;
+        const buffer = await res.arrayBuffer();
+        library[(await loadRomSet(buffer)).game] = buffer;
+      } catch { /* not there */ }
+    }
+  }
+  let last = null;
+  try { last = localStorage.getItem('game'); } catch { /* default */ }
+  const game = library[last] ? last : Object.keys(library)[0];
+  if (!game) return;
+  try { await start(library[game], false); } catch { showGames(); }
 }
 
 $('file').addEventListener('change', async (e) => {
   const file = e.target.files[0];
+  e.target.value = '';
   if (!file) return;
   try {
     await start(await file.arrayBuffer(), true);

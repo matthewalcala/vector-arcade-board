@@ -1,21 +1,23 @@
-// Reads a ROM zip and picks out the chips by CRC32, so file names don't matter.
+// Reads a ROM zip, works out which board it is for, and picks out the chips by CRC32,
+// so file names don't matter.
 
-const CHIPS = {
-  0x04f1876e: 'banked',
-  0xf725e344: 'rom8000',
-  0xf6da0a00: 'romA000',
-  0x7e406703: 'romC000',
-  0xc7e51237: 'romE000',
-  0x538e7d2f: 'vector',
-  0x82fc3eb2: 'avgProm',
-  0x810e040e: 'math0',
-  0xae69881c: 'math1',
-  0xecf22628: 'math2',
-  0x83febfde: 'math3',
-  0xdbf3aea2: 'sound0',
-  0xe38070a8: 'sound1',
+// Chips of each supported board, by CRC32.
+const SETS = {
+  starwars: {
+    0x04f1876e: 'banked', 0xf725e344: 'rom8000', 0xf6da0a00: 'romA000', 0x7e406703: 'romC000', 0xc7e51237: 'romE000',
+    0x538e7d2f: 'vector', 0x82fc3eb2: 'avgProm',
+    0x810e040e: 'math0', 0xae69881c: 'math1', 0xecf22628: 'math2', 0x83febfde: 'math3',
+    0xdbf3aea2: 'sound0', 0xe38070a8: 'sound1',
+  },
+  esb: {
+    0xef1e3ae5: 'banked', 0x62ce5c12: 'romA000', 0x27b0889b: 'romC000', 0xfd5c725e: 'romE000',
+    0xea9e4dce: 'slap01', 0x76d07f59: 'slap23',
+    0xb1f9bd12: 'vector', 0x82fc3eb2: 'avgProm',
+    0xb8d0f69d: 'math0', 0x6a2a4d98: 'math1', 0x6a76138f: 'math2', 0xafbf6e01: 'math3',
+    0x24ae3815: 'sound0', 0xca72d341: 'sound1',
+  },
 };
-const REQUIRED = ['banked', 'rom8000', 'romA000', 'romC000', 'romE000', 'vector', 'avgProm', 'math0', 'math1', 'math2', 'math3'];
+const OPTIONAL = ['sound0', 'sound1'];
 
 const CRC_TABLE = new Uint32Array(256);
 for (let i = 0; i < 256; i++) {
@@ -63,24 +65,56 @@ async function unzip(buffer) {
   return files;
 }
 
+const lo = (rom) => rom.subarray(0, 0x2000), hi = (rom) => rom.subarray(0x2000, 0x4000);
+
+function join(...parts) {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const p of parts) { out.set(p, at); at += p.length; }
+  return out;
+}
+
+// Returns the board's ROM layout:
+//   bank6000: the two pages switched at 0x6000;  upper: one or two images of 0xa000-0xffff;
+//   rom8000 or slapstic (four pages) for 0x8000-0x9fff;  sound: [address, data] pairs or null.
 export async function loadRomSet(buffer) {
-  const found = {};
-  for (const f of await unzip(buffer)) {
-    const role = CHIPS[crc32(f.data)];
-    if (role) found[role] = f.data;
+  const files = (await unzip(buffer)).map((f) => ({ crc: crc32(f.data), data: f.data }));
+  let best = null;
+  for (const [game, chips] of Object.entries(SETS)) {
+    const found = {};
+    for (const f of files) if (chips[f.crc]) found[chips[f.crc]] = f.data;
+    const required = Object.values(chips).filter((r) => !OPTIONAL.includes(r));
+    const missing = required.filter((r) => !found[r]).length;
+    if (!best || missing < best.missing) best = { game, found, missing, total: required.length };
   }
-  const missing = REQUIRED.filter((r) => !found[r]);
-  if (missing.length) throw new Error('ROM set not recognised: ' + missing.length + ' of ' + REQUIRED.length + ' required chips missing');
-  return {
-    bank0: found.banked.subarray(0, 0x2000),
-    bank1: found.banked.subarray(0x2000, 0x4000),
-    rom8000: found.rom8000,
-    romA000: found.romA000,
-    romC000: found.romC000,
-    romE000: found.romE000,
+  if (best.missing) throw new Error('ROM set not recognised: ' + best.missing + ' of ' + best.total + ' required chips missing');
+  const { game, found } = best;
+  const common = {
+    game,
+    bank6000: [lo(found.banked), hi(found.banked)],
     vector: found.vector,
     avgProm: found.avgProm,
     math: [found.math0, found.math1, found.math2, found.math3],
-    sound: found.sound0 && found.sound1 ? [found.sound0, found.sound1] : null,
+  };
+  if (game === 'esb') {
+    return {
+      ...common,
+      upper: [
+        join(lo(found.romA000), lo(found.romC000), lo(found.romE000)),
+        join(hi(found.romA000), hi(found.romC000), hi(found.romE000)),
+      ],
+      slapstic: [lo(found.slap01), hi(found.slap01), lo(found.slap23), hi(found.slap23)],
+      sound: found.sound0 && found.sound1
+        ? [[0x4000, lo(found.sound0)], [0xc000, hi(found.sound0)], [0x6000, lo(found.sound1)], [0xe000, hi(found.sound1)]]
+        : null,
+    };
+  }
+  return {
+    ...common,
+    upper: [join(found.romA000, found.romC000, found.romE000)],
+    rom8000: found.rom8000,
+    sound: found.sound0 && found.sound1
+      ? [[0x4000, found.sound0], [0xc000, found.sound0], [0x6000, found.sound1], [0xe000, found.sound1]]
+      : null,
   };
 }
