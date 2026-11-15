@@ -9,6 +9,7 @@ const setup = $('setup');
 const msg = $('msg');
 
 let board = null;
+let cheat = false;
 const stick = { x: 0.5, y: 0.5 }; // 0..1, screen-style (y down)
 const IDLE_MS = 30000;
 let lastInput = -Infinity;
@@ -55,6 +56,7 @@ async function start(buffer, remember) {
   board.onNvStore = (data) => kvSet('nvram', new Uint8Array(data));
   if (audioCtx && board.snd) board.snd.setSampleRate(audioCtx.sampleRate, CPU_HZ);
   setup.hidden = true;
+  board.cheat = cheat;
   window.__board = board;
 }
 
@@ -294,12 +296,31 @@ for (const ev of ['pointerup', 'pointercancel']) {
 
 // landscape picture shape: stretched to fill, or the cabinet's 4:3
 const shape = $('shape');
+function showShape() {
+  shape.textContent = ($('app').classList.contains('fit') ? 'WIDE' : '4:3') + (cheat ? '  SHIELDS LOCKED' : '');
+  shape.classList.toggle('cheat', cheat);
+}
 function setFit(fit) {
   $('app').classList.toggle('fit', fit);
-  shape.textContent = fit ? 'WIDE' : '4:3';
+  showShape();
   try { localStorage.setItem('fit', fit ? '1' : ''); } catch { /* not remembered */ }
 }
-shape.addEventListener('click', () => setFit(!$('app').classList.contains('fit')));
+// a long press on the label switches the shield cheat; it is off again on the next launch
+const CHEAT_PRESS_MS = 800;
+let cheatTimer = null, longPressed = false;
+shape.addEventListener('pointerdown', () => {
+  longPressed = false;
+  cheatTimer = setTimeout(() => {
+    longPressed = true;
+    cheat = !cheat;
+    if (board) board.cheat = cheat;
+    showShape();
+  }, CHEAT_PRESS_MS);
+});
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
+  shape.addEventListener(ev, () => clearTimeout(cheatTimer));
+}
+shape.addEventListener('click', () => { if (!longPressed) setFit(!$('app').classList.contains('fit')); });
 let savedFit = false;
 try { savedFit = !!localStorage.getItem('fit'); } catch { /* default */ }
 setFit(savedFit);
