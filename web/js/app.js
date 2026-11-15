@@ -50,6 +50,8 @@ const romKey = (game) => (game === 'starwars' ? 'rom' : 'rom:' + game);
 const nvKey = (game) => (game === 'starwars' ? 'nvram' : 'nvram:' + game);
 const library = {}; // game -> ROM zip buffer, for every game loaded on this device
 
+let current = null; // game on the board now
+
 async function start(buffer, remember) {
   const roms = await loadRomSet(buffer);
   const game = roms.game;
@@ -59,11 +61,11 @@ async function start(buffer, remember) {
     // ask the browser not to clear this site's storage when space runs low
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   }
-  try { localStorage.setItem('game', game); } catch { /* not remembered */ }
   const nv = await kvGet(nvKey(game));
   board = new Board(roms, nv instanceof Uint8Array && nv.length === 256 ? nv : null);
   board.onNvStore = (data) => kvSet(nvKey(game), new Uint8Array(data));
   if (audioCtx && board.snd) board.snd.setSampleRate(audioCtx.sampleRate, CPU_HZ);
+  current = game;
   cheat = false;
   easy.classList.remove('on');
   showShape();
@@ -71,18 +73,25 @@ async function start(buffer, remember) {
   window.__board = board;
 }
 
+// dashboard: one tile per game; the running game pauses while it is up
 function showGames() {
   const list = $('games');
   list.textContent = '';
-  for (const game of Object.keys(library)) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'btn';
-    b.textContent = TITLES[game];
-    b.addEventListener('click', () => start(library[game], false).catch((err) => { msg.textContent = err.message; }));
-    list.append(b);
+  for (const game of Object.keys(TITLES)) {
+    const have = !!library[game];
+    const tile = document.createElement(have ? 'button' : 'label');
+    tile.className = have ? 'tile' : 'tile missing';
+    const name = document.createElement('b');
+    name.textContent = TITLES[game];
+    const action = document.createElement('span');
+    action.textContent = !have ? 'ADD ROM ZIP' : game === current ? 'RESUME' : 'PLAY';
+    tile.append(name, action);
+    if (!have) tile.htmlFor = 'file';
+    else if (game === current) tile.addEventListener('click', () => { setup.hidden = true; });
+    else tile.addEventListener('click', () => start(library[game], false).catch((err) => { msg.textContent = err.message; }));
+    list.append(tile);
   }
-  msg.textContent = list.children.length ? 'Pick a game, or add another ROM zip.' : 'Choose your ROM zip to start. It stays on this device.';
+  msg.textContent = 'ROM zips stay on this device.';
   setup.hidden = false;
 }
 $('menu').addEventListener('click', showGames);
@@ -110,11 +119,7 @@ async function boot() {
       } catch { /* not there */ }
     }
   }
-  let last = null;
-  try { last = localStorage.getItem('game'); } catch { /* default */ }
-  const game = library[last] ? last : Object.keys(library)[0];
-  if (!game) return;
-  try { await start(library[game], false); } catch { showGames(); }
+  showGames();
 }
 
 $('file').addEventListener('change', async (e) => {
@@ -124,6 +129,7 @@ $('file').addEventListener('change', async (e) => {
   try {
     await start(await file.arrayBuffer(), true);
   } catch (err) {
+    showGames();
     msg.textContent = err.message;
   }
 });
@@ -235,7 +241,7 @@ function tick(now) {
   requestAnimationFrame(tick);
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  if (board) {
+  if (board && setup.hidden) {
     if (now - lastInput > IDLE_MS) {
       // The game learns the yoke's range from the extremes it sees. While nobody is
       // playing, show it both ends so the next game starts fully calibrated.

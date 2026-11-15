@@ -29,6 +29,7 @@ html, body {
   padding: 6px 8px; border: 0; background: none; color: rgba(160, 200, 230, 0.45);
   font: inherit; font-size: 10px; letter-spacing: 2px;
 }
+#bar #menu { border: 1px solid rgba(160, 200, 230, 0.6); border-radius: 6px; background: rgba(0, 0, 0, 0.55); color: #cde; }
 #shape { display: none; }
 #bar #shape.cheat { color: #fc6; }
 
@@ -54,16 +55,25 @@ html, body {
   #fire { grid-column: 2; grid-row: 2; }
 }
 
-#setup { position: fixed; z-index: 5; inset: 0; display: flex; align-items: center; justify-content: center; background: #000c; padding: 16px; }
+#setup {
+  position: fixed; z-index: 5; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; background: #000; text-align: center;
+  padding: calc(env(safe-area-inset-top) + 16px) calc(env(safe-area-inset-right) + 16px) calc(env(safe-area-inset-bottom) + 16px) calc(env(safe-area-inset-left) + 16px);
+}
 #setup[hidden] { display: none; }
-.card { max-width: 340px; text-align: center; border: 1px solid #234; border-radius: 12px; padding: 20px; background: #050a0e; }
-.card h1 { font-size: 18px; margin: 0 0 8px; color: #cde; font-weight: 600; }
-.card p { margin: 0 0 16px; line-height: 1.4; }
-.btn { display: inline-block; padding: 12px 18px; border-radius: 8px; background: #135; color: #fff; }
-button.btn { border: 0; font: inherit; }
-#games { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-#games:empty { display: none; }
-#games .btn { background: #264; }
+#setup h1 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 5px; text-transform: uppercase; color: #6cf; }
+#setup p { margin: 0; min-height: 1.4em; }
+#games { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; width: 100%; }
+.tile {
+  flex: 1 1 220px; max-width: 320px; min-height: 130px; padding: 18px 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  border: 2px solid #4f6; border-radius: 14px; background: rgba(60, 255, 100, 0.07);
+  color: #dfe; font: inherit; box-shadow: 0 0 18px rgba(60, 255, 100, 0.25);
+}
+.tile b { font-size: 20px; letter-spacing: 1px; }
+.tile span { padding: 6px 14px; border-radius: 6px; background: #4f6; color: #000; font-size: 12px; font-weight: 600; letter-spacing: 3px; }
+.tile.missing { border: 2px dashed #456; background: none; box-shadow: none; color: #9ab; }
+.tile.missing span { background: #135; color: #fff; }
 
 #sound {
   position: fixed; z-index: 2; top: calc(env(safe-area-inset-top) + 36px); left: calc(env(safe-area-inset-left) + 18px);
