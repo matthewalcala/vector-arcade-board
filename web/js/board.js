@@ -9,6 +9,8 @@ const SLICE = 64; // CPU cycles the two processors may drift apart
 // math box microcode strobes
 const M_LAC = 0x01, M_READ_ACC = 0x02, M_HALT = 0x04, M_INC_BIC = 0x08, M_CLEAR_ACC = 0x10, M_LDC = 0x20, M_LDB = 0x40, M_LDA = 0x80;
 
+const SHIELDS = 0x4860; // game RAM: shields remaining
+
 export class Board {
   // roms: { main0, main1 (bank halves), rom8000, romA000, romC000, romE000, vector, avgProm, math[4] }
   constructor(roms, nvram) {
@@ -50,6 +52,8 @@ export class Board {
     this.in = { coin: false, fireL: false, fireR: false, thumbL: false, thumbR: false, selfTest: false };
     this.stickX = 0x80;
     this.stickY = 0x80;
+    this.cheat = false;
+    this.shieldsSeen = 0;
     this.dsw0 = 0x94; // 6 shields, moderate, 1 bonus shield
     this.dsw1 = 0x00; // free play
 
@@ -213,5 +217,9 @@ export class Board {
       }
       if (this.snd) this.snd.runTo(this.clock);
     }
+    // cheat: put back a shield the moment the game takes one away
+    const shields = this.mem[SHIELDS];
+    if (this.cheat && shields === this.shieldsSeen - 1) this.mem[SHIELDS] = this.shieldsSeen;
+    else this.shieldsSeen = shields;
   }
 }
